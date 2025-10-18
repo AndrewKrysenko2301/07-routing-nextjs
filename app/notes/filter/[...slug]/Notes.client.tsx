@@ -3,19 +3,23 @@
 import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
-import type { Note } from "../../types/note";
-import SearchBox from "../../components/SearchBox/SearchBox";
-import Pagination from "../../components/Pagination/Pagination";
-import NoteList from "../../components/NoteList/NoteList";
-import Modal from "../../components/Modal/Modal";
-import NoteForm from "../../components/NoteForm/NoteForm";
-import LoadingIndicator from "../../components/LoadingIndicator/LoadingIndicator";
-import ErrorMessage from "../../components/ErrorMessage/ErrorMessage";
-import { fetchNotes } from "../../lib/api";
+import type { Note } from "../../../../types/note";
+import SearchBox from "../../../../components/SearchBox/SearchBox";
+import Pagination from "../../../../components/Pagination/Pagination";
+import NoteList from "../../../../components/NoteList/NoteList";
+import Modal from "../../../../components/Modal/Modal";
+import NoteForm from "../../../../components/NoteForm/NoteForm";
+import LoadingIndicator from "../../../../components/LoadingIndicator/LoadingIndicator";
+import ErrorMessage from "../../../../components/ErrorMessage/ErrorMessage";
+import { fetchNotes } from "../../../../lib/api";
 
 const PER_PAGE = 12;
 
-export default function NotesClient() {
+interface NotesClientProps {
+  tag?: string | null;
+}
+
+export default function NotesClient({ tag }: NotesClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch] = useDebounce(searchTerm, 500);
   const [page, setPage] = useState(1);
@@ -26,12 +30,14 @@ export default function NotesClient() {
     setPage(1);
   };
 
+  const queryTag = tag && tag !== "All" ? tag : "";
+
   const { data, isLoading, error } = useQuery<
     { notes: Note[]; totalPages: number },
     Error
   >({
-    queryKey: ["notes", page, debouncedSearch],
-    queryFn: () => fetchNotes(page, PER_PAGE, debouncedSearch),
+    queryKey: ["notes", page, queryTag, debouncedSearch],
+    queryFn: () => fetchNotes(page, PER_PAGE, queryTag + debouncedSearch),
     placeholderData: keepPreviousData,
   });
 
