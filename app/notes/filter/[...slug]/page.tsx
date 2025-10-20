@@ -1,33 +1,27 @@
+import { fetchNoteById } from "@/lib/api";
 import {
-  QueryClient,
   dehydrate,
   HydrationBoundary,
+  QueryClient,
 } from "@tanstack/react-query";
-import { fetchNotes } from "../../../../lib/api";
-import NotesClient from "./Notes.client";
-import type { Note } from "../../../../types/note";
+import NoteDetailsClient from "../../[id]/NoteDetails.client";
 
-const PER_PAGE = 12;
-
-interface NotesPageProps {
-  params: {
-    slug?: string[];
-  };
+interface Props {
+  params: Promise<{ id: string }>;
 }
 
-export default async function NotesPage({ params }: NotesPageProps) {
+export default async function NoteDetails({ params }: Props) {
+  const { id } = await params;
   const queryClient = new QueryClient();
 
-  const tag = params.slug?.[0] || "";
-
-  await queryClient.prefetchQuery<{ notes: Note[]; totalPages: number }>({
-    queryKey: ["notes", 1, tag],
-    queryFn: () => fetchNotes(1, PER_PAGE, tag),
+  await queryClient.prefetchQuery({
+    queryKey: ["note", id],
+    queryFn: () => fetchNoteById(id),
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotesClient tag={tag} />
+      <NoteDetailsClient noteId={id} />
     </HydrationBoundary>
   );
 }
