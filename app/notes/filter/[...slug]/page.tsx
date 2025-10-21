@@ -7,28 +7,26 @@ import {
 import NotesClient from "./Notes.client";
 
 interface Props {
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ slug: string[] }>;
 }
 
-export default async function NotesPage({ params }: Props) {
-  const { slug } = await params;
+const topic = "";
+const page = 1;
 
-  // 🧩 Достаём тег из массива slug (или undefined)
-  const tag = Array.isArray(slug) ? slug[0] : slug;
-
-  // 🧠 Нормализуем "All" — чтобы запрос не ломался
-  const normalizedTag = tag?.toLowerCase() === "all" ? undefined : tag;
-
+export default async function Notes({ params }: Props) {
   const queryClient = new QueryClient();
 
+  const { slug } = await params;
+  const category = slug[0];
+
   await queryClient.prefetchQuery({
-    queryKey: ["notes", 1, normalizedTag, ""],
-    queryFn: () => fetchNotes("", 1, normalizedTag),
+    queryKey: ["notes", topic, page, category],
+    queryFn: () => fetchNotes(topic, page, category),
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotesClient tag={normalizedTag ?? "All"} />
+      <NotesClient category={category} />
     </HydrationBoundary>
   );
 }

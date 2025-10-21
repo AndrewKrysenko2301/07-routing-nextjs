@@ -1,11 +1,9 @@
 import css from "./ErrorMessage.module.css";
 
 interface ErrorMessageProps {
-  message: string;
+  text: string;
 }
 
-const ErrorMessage = ({ message }: ErrorMessageProps) => {
-  return <div className={css.error}>{message}</div>;
-};
-
-export default ErrorMessage;
+export default function ErrorMessage({ text }: ErrorMessageProps) {
+  return <p className={css.text}>{text}</p>;
+}
