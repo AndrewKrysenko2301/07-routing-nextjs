@@ -1,46 +1,80 @@
 "use client";
 
-import { fetchNoteById } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
-import css from "./NoteDetails.module.css";
+import { useState } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useDebounce } from "use-debounce";
+import type { Note } from "../../../../types/note";
+import SearchBox from "../../../../components/SearchBox/SearchBox";
+import Pagination from "../../../../components/Pagination/Pagination";
+import NoteList from "../../../../components/NoteList/NoteList";
+import Modal from "../../../../components/Modal/Modal";
+import NoteForm from "../../../../components/NoteForm/NoteForm";
+import LoadingIndicator from "../../../../components/LoadingIndicator/LoadingIndicator";
+import ErrorMessage from "../../../../components/ErrorMessage/ErrorMessage";
+import { fetchNotes } from "../../../../lib/api";
 
-export default function NoteDetailsClient() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
+const PER_PAGE = 12;
 
-  const {
-    data: note,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["note", id],
-    queryFn: () => fetchNoteById(id),
-    refetchOnMount: false,
+interface NotesClientProps {
+  tag?: string;
+}
+
+export default function NotesClient({ tag }: NotesClientProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch] = useDebounce(searchTerm, 500);
+  const [page, setPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setPage(1);
+  };
+
+  // 🧠 Нормализуем "All" и пустое значение
+  const normalizedTag = tag?.toLowerCase() === "all" ? undefined : tag;
+
+  const { data, isLoading, error } = useQuery<{
+    notes: Note[];
+    totalPages: number;
+  }>({
+    queryKey: ["notes", page, normalizedTag, debouncedSearch],
+    queryFn: () => fetchNotes(debouncedSearch, page, normalizedTag),
+    placeholderData: keepPreviousData,
   });
 
-  function handleBack() {
-    router.back();
-  }
+  const notes = data?.notes ?? [];
+  const totalPages = data?.totalPages ?? 1;
 
-  if (isLoading) return <p>Loading, please wait...</p>;
-
-  if (error || !note) return <p>Something went wrong</p>;
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
   return (
-    <>
-      <button className={css.backBtn} onClick={handleBack}>
-        Back
-      </button>
-      <div className={css.container}>
-        <div className={css.item}>
-          <div className={css.header}>
-            <h2>{note.title}</h2>
-          </div>
-          <p className={css.content}>{note.content}</p>
-          <p className={css.date}>{note.createdAt}</p>
-        </div>
-      </div>
-    </>
+    <div className="app">
+      <header className="toolbar">
+        <SearchBox onChange={handleSearchChange} />
+        {totalPages > 1 && (
+          <Pagination
+            pageCount={totalPages}
+            currentPage={page}
+            onPageChange={setPage}
+          />
+        )}
+        <button className="button" onClick={openModal}>
+          Create note +
+        </button>
+      </header>
+
+      {isLoading && <LoadingIndicator />}
+      {error && <ErrorMessage message="Error loading notes" />}
+
+      {!isLoading && !error && notes.length === 0 && <p>No notes found.</p>}
+      {!isLoading && !error && notes.length > 0 && <NoteList notes={notes} />}
+
+      {isModalOpen && (
+        <Modal onClose={closeModal}>
+          <NoteForm onClose={closeModal} />
+        </Modal>
+      )}
+    </div>
   );
 }
